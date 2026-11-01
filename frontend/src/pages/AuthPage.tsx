@@ -62,6 +62,8 @@ function AuthPage({ mode }: { mode: 'login' | 'signup' | 'forgot-password' }) {
         const result = await signUp(data.email, data.password, data.full_name);
         if (result?.error) {
           setError(result.error);
+        } else if (result?.needsConfirmation) {
+          setSuccessMessage(result.message || 'Account created! Please check your email inbox to verify your account.');
         } else {
           navigate('/dashboard');
         }

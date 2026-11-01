@@ -19,7 +19,7 @@ interface AuthContextValue {
   isDemoMode: boolean;
   isOAuthConfigured: boolean;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error?: string }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error?: string; needsConfirmation?: boolean; message?: string }>;
   signOut: () => Promise<void>;
   recoverPassword: (email: string) => Promise<{ error?: string; message?: string }>;
   signInWithGoogle: () => Promise<{ error?: string }>;
@@ -173,31 +173,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = useCallback(async (email: string, password: string, fullName: string) => {
     if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { full_name: fullName } },
-      });
-      if (error) {
-        let friendlyError = error.message;
-        if (error.message.toLowerCase().includes('already registered')) {
-          friendlyError = 'An account with this email already exists. Please sign in instead.';
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: fullName } },
+        });
+        if (error) {
+          let friendlyError = error.message;
+          if (error.message.toLowerCase().includes('already registered')) {
+            friendlyError = 'An account with this email already exists. Please sign in instead.';
+          }
+          return { error: friendlyError };
         }
-        return { error: friendlyError };
+        if (data.session && data.user) {
+          const u: UserProfile = {
+            id: data.user.id,
+            email: data.user.email!,
+            full_name: data.user.user_metadata?.full_name || fullName,
+            avatar_url: data.user.user_metadata?.avatar_url,
+            created_at: data.user.created_at,
+          };
+          setUser(u);
+          setToken(data.session.access_token);
+          setApiAuth(data.session.access_token, data.user.id);
+          return {};
+        }
+        if (data.user && !data.session) {
+          return {
+            needsConfirmation: true,
+            message: 'Account created successfully! A confirmation link has been sent to your email. Please check your inbox and verify your email before signing in.',
+          };
+        }
+        return {};
+      } catch (err: any) {
+        return { error: err.message || 'Signup failed. Please try again.' };
       }
-      if (data.session && data.user) {
-        const u: UserProfile = {
-          id: data.user.id,
-          email: data.user.email!,
-          full_name: data.user.user_metadata?.full_name || fullName,
-          avatar_url: data.user.user_metadata?.avatar_url,
-          created_at: data.user.created_at,
-        };
-        setUser(u);
-        setToken(data.session.access_token);
-        setApiAuth(data.session.access_token, data.user.id);
-      }
-      return {};
     }
 
     // Backend Supabase registration

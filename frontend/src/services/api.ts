@@ -18,14 +18,55 @@ import type {
   EventReadinessResponse,
 } from '../types/events';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? 'https://festiva-ai-backend.onrender.com' : 'http://localhost:8000');
 
-let _authToken: string | null = null;
-let _authUserId: string | null = null;
+let _authToken: string | null = typeof window !== 'undefined' ? localStorage.getItem('festiva_token') : null;
+let _authUserId: string | null = typeof window !== 'undefined' ? localStorage.getItem('festiva_user_id') : null;
 
 export function setApiAuth(token: string | null, userId?: string | null) {
   _authToken = token;
-  if (userId) _authUserId = userId;
+  if (typeof window !== 'undefined') {
+    if (token) {
+      localStorage.setItem('festiva_token', token);
+    } else {
+      localStorage.removeItem('festiva_token');
+    }
+    if (userId) {
+      _authUserId = userId;
+      localStorage.setItem('festiva_user_id', userId);
+    } else if (userId === null) {
+      _authUserId = null;
+      localStorage.removeItem('festiva_user_id');
+    }
+  }
+}
+
+export async function apiRegister(email: string, password: string, fullName: string) {
+  return request<{ success: boolean; message: string; user: any; access_token?: string; is_demo: boolean }>('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ email, password, full_name: fullName }),
+  });
+}
+
+export async function apiLogin(email: string, password: string) {
+  return request<{ success: boolean; message: string; user: any; access_token?: string; is_demo: boolean }>('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export async function apiLogout() {
+  return request<{ success: boolean; message: string }>('/api/auth/logout', {
+    method: 'POST',
+  });
+}
+
+export async function apiGetMe() {
+  return request<{ id: string; email: string; full_name?: string; role: string; is_demo: boolean }>('/api/auth/me');
+}
+
+export async function apiGetAuthProviders() {
+  return request<{ email_password: boolean; google_oauth: boolean; demo_mode: boolean; storage_engine: string }>('/api/auth/providers');
 }
 
 class ApiError extends Error {

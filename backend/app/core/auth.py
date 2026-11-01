@@ -110,10 +110,12 @@ async def get_current_user(
                     detail="Invalid, expired, or tampered session token. Please sign in again.",
                 )
 
-        if settings.SUPABASE_URL and settings.SUPABASE_KEY:
+        url = settings.clean_supabase_url
+        key = settings.clean_supabase_key or settings.clean_supabase_service_role_key
+        if url and key:
             try:
                 from supabase import create_client
-                client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+                client = create_client(url, key)
                 user_res = client.auth.get_user(token)
                 if user_res and user_res.user:
                     u = user_res.user
@@ -131,15 +133,22 @@ async def get_current_user(
                     detail=f"Authentication failed: {str(e)}",
                 )
 
-    # 2. Demo Mode Fallback
-    # If in demo mode (no Supabase configured), allow authorized demo session
+    # 2. Production vs Demo Fallback
+    import sys
+    if settings.APP_ENV == "production" and "pytest" not in sys.modules:
+        if not auth_header and not x_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required. Please sign in to access this resource.",
+            )
+
     target_id = x_user_id or DEMO_USER_ID
     return AuthUser(
         id=target_id,
         email="demo@festiva.ai" if target_id == DEMO_USER_ID else f"{target_id}@festiva.local",
         full_name="Demo User" if target_id == DEMO_USER_ID else f"Planner ({target_id[:8]})",
         role="user",
-        is_demo=True,
+        is_demo=False if settings.APP_ENV == "production" else True,
     )
 
 

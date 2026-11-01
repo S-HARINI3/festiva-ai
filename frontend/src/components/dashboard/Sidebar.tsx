@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useAuth } from '../../contexts/AuthContext';
 import type { DashboardTab } from '../../types/dashboard';
 
 interface SidebarProps {
@@ -71,7 +70,6 @@ export default function Sidebar({
   upcomingCount,
 }: SidebarProps) {
   const { isDark, toggleTheme } = useTheme();
-  const { isDemoMode } = useAuth();
 
   const handleNavClick = (tabId: DashboardTab) => {
     onSelectTab(tabId);
@@ -189,14 +187,6 @@ export default function Sidebar({
           <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
           {!collapsed && <span className="truncate">Project Brief ✦</span>}
         </Link>
-
-        {/* Demo Mode Badge */}
-        {isDemoMode && !collapsed && (
-          <div className="px-3 py-2 rounded-xl bg-[var(--accent)]/15 border border-[var(--accent)]/30 text-[11px] text-[var(--text-secondary)] flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" />
-            <span className="font-semibold text-[var(--text-primary)]">Demo Mode Active</span>
-          </div>
-        )}
 
         {/* Theme Toggle & Collapse Switch */}
         <div className="flex items-center justify-between gap-1">

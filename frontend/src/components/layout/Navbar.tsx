@@ -22,7 +22,7 @@ const mainNavItems: NavItem[] = [
 ];
 
 export default function Navbar() {
-  const { user, signOut, isDemoMode } = useAuth();
+  const { user, signOut } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -105,13 +105,6 @@ export default function Navbar() {
               <Moon className="w-4 h-4 text-[var(--primary)] hover:-rotate-12 transition-transform" />
             )}
           </button>
-
-          {isDemoMode && (
-            <span className="badge badge-accent text-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
-              Studio Demo
-            </span>
-          )}
 
           <div className="flex items-center gap-2">
             <Link

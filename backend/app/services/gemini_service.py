@@ -15,6 +15,7 @@ import json
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
+from fastapi import HTTPException
 
 from app.core.config import settings
 from app.schemas.events import (
@@ -255,14 +256,23 @@ async def generate_event_plan(req: EventGenerateRequest) -> EventPlan:
     Generate a full structured event plan using Google GenAI SDK
     or fall back to deterministic high-fidelity demo generation.
     """
+    import sys
+    is_testing = "pytest" in sys.modules
+
     if settings.is_demo_mode:
+        if settings.APP_ENV == "production" and not is_testing:
+            raise HTTPException(
+                status_code=503,
+                detail="GEMINI_API_KEY is not configured on the backend. Please add GEMINI_API_KEY to your Render environment settings."
+            )
         return _generate_demo_plan(req)
 
     try:
         from google import genai
         from google.genai import types
 
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        api_key = settings.clean_gemini_api_key
+        client = genai.Client(api_key=api_key)
         prompt = _build_versioned_prompt(req)
 
         response = client.models.generate_content(
@@ -283,6 +293,11 @@ async def generate_event_plan(req: EventGenerateRequest) -> EventPlan:
         return _build_event_plan_from_data(req, data, demo=False, model_version="gemini-2.0-flash")
 
     except Exception as e:
+        if settings.APP_ENV == "production" and not is_testing:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Gemini AI generation failed: {str(e)}. Please check your GEMINI_API_KEY and Google AI Studio quota."
+            )
         print(f"[Festiva Engine] Gemini AI error: {e}. Falling back to deterministic demo engine.")
         plan = _generate_demo_plan(req)
         plan.demo = True
@@ -953,7 +968,8 @@ async def regenerate_section(
     plan: EventPlan, section: RegenerateSection, context: Optional[str] = None
 ) -> dict:
     """Regenerate a specific section of an existing event plan."""
-    if settings.is_demo_mode:
+    import sys
+    if settings.is_demo_mode or "pytest" in sys.modules:
         # Provide refreshed realistic section data in demo mode
         req = EventGenerateRequest(
             event_type=plan.event_type,

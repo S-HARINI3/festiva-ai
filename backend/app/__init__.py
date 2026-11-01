@@ -33,14 +33,15 @@ async def security_and_size_middleware(request: Request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
 
-# CORS Configuration — Supports both wildcard development and explicit production domains
+# CORS Configuration — Supports explicit production domains and regex for Vercel previews
 cors_origins = settings.cors_origins_list
-is_wildcard = "*" in cors_origins or not cors_origins
+is_wildcard = "*" in cors_origins
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"] if is_wildcard else cors_origins,
-    allow_credentials=not is_wildcard,
+    allow_origin_regex=None if is_wildcard else r"^https:\/\/.*\.vercel\.app$",
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -1,11 +1,11 @@
 import { motion } from 'framer-motion';
-import { User, Mail, Calendar, Shield, Sparkles } from 'lucide-react';
+import { User, Mail, Calendar, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDate } from '../utils/helpers';
 import { Card, Badge, CelebrationRibbon } from '../components/ui';
 
 export default function ProfilePage() {
-  const { user, isDemoMode } = useAuth();
+  const { user } = useAuth();
 
   if (!user) return null;
 
@@ -33,11 +33,9 @@ export default function ProfilePage() {
                   {user.full_name || 'Festiva Host'}
                 </h2>
                 <p className="text-xs text-[var(--text-secondary)] font-medium mt-0.5">{user.email}</p>
-                {isDemoMode && (
-                  <Badge variant="accent" size="sm" className="mt-2">
-                    Studio Demo Account
-                  </Badge>
-                )}
+                <Badge variant="success" size="sm" className="mt-2">
+                  Verified Host Profile
+                </Badge>
               </div>
             </div>
 
@@ -46,7 +44,7 @@ export default function ProfilePage() {
                 { icon: User, label: 'Full Name', value: user.full_name || 'Not configured' },
                 { icon: Mail, label: 'Primary Email', value: user.email },
                 { icon: Calendar, label: 'Member Since', value: formatDate(user.created_at) },
-                { icon: Shield, label: 'Environment', value: isDemoMode ? 'Studio Demo Mode' : 'Cloud Synchronized' },
+                { icon: Shield, label: 'Environment', value: 'Cloud Synchronized (Supabase PostgreSQL)' },
               ].map(({ icon: Icon, label, value }) => (
                 <div
                   key={label}
@@ -65,28 +63,6 @@ export default function ProfilePage() {
               ))}
             </div>
           </Card>
-
-          {isDemoMode && (
-            <Card variant="elevated" padding="md">
-              <div className="flex items-start gap-3.5">
-                <div className="w-9 h-9 rounded-xl bg-[var(--accent-light)] text-[var(--accent-text)] border border-[var(--accent)]/30 flex items-center justify-center flex-shrink-0">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm text-[var(--text-primary)] mb-1">
-                    Connect Gemini &amp; Supabase
-                  </h3>
-                  <p className="text-xs text-[var(--text-secondary)] leading-relaxed mb-3">
-                    Add your API keys to the backend <code className="px-1 py-0.5 rounded bg-[var(--surface)] border border-[var(--border)] font-mono text-[11px]">.env</code> file to enable live Gemini AI generation and persistent database sync.
-                  </p>
-                  <div className="space-y-1.5 text-xs text-[var(--text-secondary)] font-mono">
-                    <div>• <code className="text-[var(--primary)]">GEMINI_API_KEY</code></div>
-                    <div>• <code className="text-[var(--primary)]">SUPABASE_URL</code> &amp; <code className="text-[var(--primary)]">SUPABASE_KEY</code></div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          )}
         </motion.div>
       </div>
     </div>

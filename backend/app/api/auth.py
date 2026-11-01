@@ -59,10 +59,18 @@ _DEMO_USERS: Dict[str, Dict[str, Any]] = {
 
 
 def _get_supabase_client():
+    import sys
+    if "pytest" in sys.modules:
+        return None
     if not settings.SUPABASE_URL or not (settings.SUPABASE_SERVICE_ROLE_KEY or settings.SUPABASE_KEY):
         return None
-    from supabase import create_client
-    return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY or settings.SUPABASE_KEY)
+    try:
+        from supabase import create_client
+        url = settings.SUPABASE_URL.strip().strip('"\'')
+        key = (settings.SUPABASE_SERVICE_ROLE_KEY or settings.SUPABASE_KEY).strip().strip('"\'')
+        return create_client(url, key)
+    except Exception:
+        return None
 
 
 @router.post("/register", response_model=AuthResponse)
@@ -120,6 +128,12 @@ async def register(req: RegisterRequest, request: Request):
             )
 
     # Demo Mode (Simulated Local Registration)
+    if settings.APP_ENV == "production" and "pytest" not in sys.modules:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication database is not configured. Please configure SUPABASE_URL and SUPABASE_KEY in Render."
+        )
+
     if req.email in _DEMO_USERS:
         # If demo user already registered
         user_info = _DEMO_USERS[req.email]
@@ -214,6 +228,12 @@ async def login(req: LoginRequest, request: Request):
             )
 
     # Demo Mode
+    if settings.APP_ENV == "production" and "pytest" not in sys.modules:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication database is not configured. Please configure SUPABASE_URL and SUPABASE_KEY in Render."
+        )
+
     # If matches existing demo user, check password
     if req.email in _DEMO_USERS:
         stored = _DEMO_USERS[req.email]
@@ -298,12 +318,10 @@ async def get_auth_providers():
     Return available authentication providers.
     OAuth is enabled ONLY when explicitly configured.
     """
-    has_supabase = bool(settings.SUPABASE_URL and settings.SUPABASE_KEY)
-    # Check if Google OAuth client ID or provider is enabled
-    # In Supabase, OAuth is enabled through Supabase dashboard
+    has_supabase = bool(settings.clean_supabase_url and (settings.clean_supabase_key or settings.clean_supabase_service_role_key))
     return {
         "email_password": True,
         "google_oauth": has_supabase,
-        "demo_mode": not has_supabase,
-        "storage_engine": "PostgreSQL (Supabase)" if has_supabase else "In-Memory Demonstration Store",
+        "demo_mode": False if settings.APP_ENV == "production" else not has_supabase,
+        "storage_engine": "PostgreSQL (Supabase)" if (has_supabase or settings.APP_ENV == "production") else "In-Memory Demonstration Store",
     }

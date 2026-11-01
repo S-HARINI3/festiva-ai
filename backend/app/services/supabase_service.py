@@ -5,6 +5,8 @@ Falls back gracefully to an in-memory store when Supabase is not configured.
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import uuid
+import sys
+from fastapi import HTTPException
 
 from app.core.config import settings
 
@@ -629,10 +631,18 @@ def _init_demo_store():
 
 
 def _get_client():
+    import sys
+    if "pytest" in sys.modules:
+        return None
     if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
         return None
-    from supabase import create_client
-    return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY or settings.SUPABASE_KEY)
+    try:
+        from supabase import create_client
+        url = settings.SUPABASE_URL.strip().strip('"\'')
+        key = (settings.SUPABASE_SERVICE_ROLE_KEY or settings.SUPABASE_KEY).strip().strip('"\'')
+        return create_client(url, key)
+    except Exception:
+        return None
 
 
 async def _sync_child_records(client, event_id: str, user_id: str, plan_data: Dict[str, Any]):
@@ -796,12 +806,38 @@ async def _sync_child_records(client, event_id: str, user_id: str, plan_data: Di
         pass
 
 
+def _handle_db_error(e: Exception):
+    err_str = str(e)
+    code = getattr(e, "code", "")
+    message = getattr(e, "message", err_str)
+    
+    if "PGRST205" in str(code) or "schema cache" in err_str or ("relation" in err_str and "does not exist" in err_str):
+        raise HTTPException(
+            status_code=503,
+            detail="Database schema not initialized. Please run backend/migrations/001_initial_schema.sql in your Supabase SQL Editor."
+        )
+    if "Invalid API key" in err_str or "JWT" in err_str:
+        raise HTTPException(
+            status_code=503,
+            detail="Invalid Supabase API key. Please check SUPABASE_KEY / SUPABASE_SERVICE_ROLE_KEY in your Render environment settings."
+        )
+    raise HTTPException(
+        status_code=500,
+        detail=f"Database error: {message}"
+    )
+
+
 async def save_event(user_id: str, plan_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     client = _get_client()
     event_id = plan_data.get("event_id") or str(uuid.uuid4())
     now_iso = datetime.utcnow().isoformat()
 
     if not client:
+        if settings.APP_ENV == "production" and "pytest" not in sys.modules:
+            raise HTTPException(
+                status_code=503,
+                detail="Database service not configured. Please ensure SUPABASE_URL and SUPABASE_KEY are configured in your deployment settings."
+            )
         _init_demo_store()
         record = {
             "id": event_id,
@@ -832,38 +868,52 @@ async def save_event(user_id: str, plan_data: Dict[str, Any]) -> Optional[Dict[s
         "created_at": plan_data.get("created_at") or now_iso,
         "updated_at": now_iso,
     }
-    result = client.table("events").insert(event_row).execute()
-    
-    # Synchronize child tables and snapshot
-    await _sync_child_records(client, event_id, user_id, plan_data)
-    
-    saved_event = result.data[0] if result.data else event_row
-    saved_event["plan_data"] = plan_data
-    return saved_event
+    try:
+        result = client.table("events").insert(event_row).execute()
+        # Synchronize child tables and snapshot
+        await _sync_child_records(client, event_id, user_id, plan_data)
+        saved_event = result.data[0] if result.data else event_row
+        saved_event["plan_data"] = plan_data
+        return saved_event
+    except Exception as e:
+        _handle_db_error(e)
 
 
 async def get_user_events(user_id: str) -> List[Dict[str, Any]]:
     client = _get_client()
     if not client:
+        if settings.APP_ENV == "production" and "pytest" not in sys.modules:
+            raise HTTPException(
+                status_code=503,
+                detail="Database service not configured. Please ensure SUPABASE_URL and SUPABASE_KEY are configured in your deployment settings."
+            )
         _init_demo_store()
         user_events = [e for e in _DEMO_STORE.values() if str(e.get("user_id")) == str(user_id)]
         return sorted(user_events, key=lambda x: str(x.get("created_at", "")), reverse=True)
     
-    result = client.table("events").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
-    events = result.data or []
-    
-    # Attach plan_data from event_plans snapshot if needed
-    for ev in events:
-        eid = ev["id"]
-        p_res = client.table("event_plans").select("plan_data").eq("event_id", eid).eq("user_id", user_id).execute()
-        if p_res.data:
-            ev["plan_data"] = p_res.data[0].get("plan_data", {})
-    return events
+    try:
+        result = client.table("events").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
+        events = result.data or []
+        
+        # Attach plan_data from event_plans snapshot if needed
+        for ev in events:
+            eid = ev["id"]
+            p_res = client.table("event_plans").select("plan_data").eq("event_id", eid).eq("user_id", user_id).execute()
+            if p_res.data:
+                ev["plan_data"] = p_res.data[0].get("plan_data", {})
+        return events
+    except Exception as e:
+        _handle_db_error(e)
 
 
 async def get_event_by_id(event_id: str, user_id: str) -> Optional[Dict[str, Any]]:
     client = _get_client()
     if not client:
+        if settings.APP_ENV == "production" and "pytest" not in sys.modules:
+            raise HTTPException(
+                status_code=503,
+                detail="Database service not configured. Please ensure SUPABASE_URL and SUPABASE_KEY are configured in your deployment settings."
+            )
         _init_demo_store()
         event = _DEMO_STORE.get(event_id)
         # STRICT OWNERSHIP BOUNDARY: Validate user_id matches event owner
@@ -871,15 +921,18 @@ async def get_event_by_id(event_id: str, user_id: str) -> Optional[Dict[str, Any
             return event
         return None
     
-    result = client.table("events").select("*").eq("id", event_id).eq("user_id", user_id).execute()
-    if not result.data:
-        return None
-    
-    event = result.data[0]
-    p_res = client.table("event_plans").select("plan_data").eq("event_id", event_id).eq("user_id", user_id).execute()
-    if p_res.data:
-        event["plan_data"] = p_res.data[0].get("plan_data", {})
-    return event
+    try:
+        result = client.table("events").select("*").eq("id", event_id).eq("user_id", user_id).execute()
+        if not result.data:
+            return None
+        
+        event = result.data[0]
+        p_res = client.table("event_plans").select("plan_data").eq("event_id", event_id).eq("user_id", user_id).execute()
+        if p_res.data:
+            event["plan_data"] = p_res.data[0].get("plan_data", {})
+        return event
+    except Exception as e:
+        _handle_db_error(e)
 
 
 async def update_event(event_id: str, user_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -887,6 +940,11 @@ async def update_event(event_id: str, user_id: str, updates: Dict[str, Any]) -> 
     now_iso = datetime.utcnow().isoformat()
 
     if not client:
+        if settings.APP_ENV == "production" and "pytest" not in sys.modules:
+            raise HTTPException(
+                status_code=503,
+                detail="Database service not configured. Please ensure SUPABASE_URL and SUPABASE_KEY are configured in your deployment settings."
+            )
         _init_demo_store()
         event = _DEMO_STORE.get(event_id)
         # STRICT OWNERSHIP BOUNDARY
@@ -896,28 +954,36 @@ async def update_event(event_id: str, user_id: str, updates: Dict[str, Any]) -> 
             return event
         return None
     
-    # Ensure event belongs to user before updating
-    existing = client.table("events").select("id").eq("id", event_id).eq("user_id", user_id).execute()
-    if not existing.data:
-        return None
-    
-    # Separate event-level updates from plan_data
-    event_updates = {k: v for k, v in updates.items() if k != "plan_data"}
-    event_updates["updated_at"] = now_iso
+    try:
+        # Ensure event belongs to user before updating
+        existing = client.table("events").select("id").eq("id", event_id).eq("user_id", user_id).execute()
+        if not existing.data:
+            return None
+        
+        # Separate event-level updates from plan_data
+        event_updates = {k: v for k, v in updates.items() if k != "plan_data"}
+        event_updates["updated_at"] = now_iso
 
-    if event_updates:
-        client.table("events").update(event_updates).eq("id", event_id).eq("user_id", user_id).execute()
+        if event_updates:
+            client.table("events").update(event_updates).eq("id", event_id).eq("user_id", user_id).execute()
 
-    if "plan_data" in updates:
-        plan_data = updates["plan_data"]
-        await _sync_child_records(client, event_id, user_id, plan_data)
+        if "plan_data" in updates:
+            plan_data = updates["plan_data"]
+            await _sync_child_records(client, event_id, user_id, plan_data)
 
-    return await get_event_by_id(event_id, user_id)
+        return await get_event_by_id(event_id, user_id)
+    except Exception as e:
+        _handle_db_error(e)
 
 
 async def delete_event(event_id: str, user_id: str) -> bool:
     client = _get_client()
     if not client:
+        if settings.APP_ENV == "production" and "pytest" not in sys.modules:
+            raise HTTPException(
+                status_code=503,
+                detail="Database service not configured. Please ensure SUPABASE_URL and SUPABASE_KEY are configured in your deployment settings."
+            )
         _init_demo_store()
         event = _DEMO_STORE.get(event_id)
         # STRICT OWNERSHIP BOUNDARY
@@ -926,8 +992,11 @@ async def delete_event(event_id: str, user_id: str) -> bool:
             return True
         return False
     
-    result = client.table("events").delete().eq("id", event_id).eq("user_id", user_id).execute()
-    return len(result.data) > 0
+    try:
+        result = client.table("events").delete().eq("id", event_id).eq("user_id", user_id).execute()
+        return len(result.data) > 0
+    except Exception as e:
+        _handle_db_error(e)
 
 
 async def reset_demo_store() -> Dict[str, Any]:

@@ -30,7 +30,7 @@ const forgotPasswordSchema = z.object({
 
 function AuthPage({ mode }: { mode: 'login' | 'signup' | 'forgot-password' }) {
   const navigate = useNavigate();
-  const { signIn, signUp, recoverPassword, signInWithGoogle, isDemoMode, isOAuthConfigured } = useAuth();
+  const { signIn, signUp, recoverPassword, signInWithGoogle, isOAuthConfigured } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -117,19 +117,6 @@ function AuthPage({ mode }: { mode: 'login' | 'signup' | 'forgot-password' }) {
 
         <Card className="border-[var(--border)] shadow-soft">
           <CardContent className="p-7">
-            {/* Clear Demo Studio Indicator */}
-            {isDemoMode && (
-              <div className="mb-5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-left flex items-start gap-2.5">
-                <span className="text-base flex-shrink-0">🎭</span>
-                <div className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                  <p className="font-semibold text-[var(--text-primary)]">Demo Studio Active</p>
-                  <p className="mt-0.5">
-                    Operating in simulated sandbox mode. Records are kept in memory and are not permanently saved to a remote cloud database without Supabase configuration.
-                  </p>
-                </div>
-              </div>
-            )}
-
             {/* Google OAuth (Rendered ONLY if provider configuration is available) */}
             {mode !== 'forgot-password' && (
               <>

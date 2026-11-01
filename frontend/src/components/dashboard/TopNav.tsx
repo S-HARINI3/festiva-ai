@@ -1,4 +1,4 @@
-import { Menu, Search, PlusCircle, User, Calendar, RotateCcw } from 'lucide-react';
+import { Menu, Search, PlusCircle, User, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import type { SavedEvent } from '../../types/events';
@@ -37,9 +37,8 @@ export default function TopNav({
   onSelectEventId,
   searchQuery,
   onSearchChange,
-  onOpenResetDemo,
 }: TopNavProps) {
-  const { user, isDemoMode } = useAuth();
+  const { user } = useAuth();
   const meta = TAB_TITLES[activeTab] || TAB_TITLES.overview;
 
   return (
@@ -104,19 +103,6 @@ export default function TopNav({
               className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] hover:border-[var(--border-hover)] focus:border-[var(--primary)] text-xs text-[var(--text-primary)] outline-none transition-all placeholder:text-[var(--text-muted)]"
             />
           </div>
-
-          {/* Demo Reset Button */}
-          {isDemoMode && onOpenResetDemo && (
-            <button
-              type="button"
-              onClick={onOpenResetDemo}
-              className="inline-flex items-center gap-1.5 py-1.5 px-2.5 rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/10 hover:bg-[var(--accent)]/20 text-[var(--accent)] text-xs font-semibold shadow-xs transition-all cursor-pointer"
-              title="Reset sample events, budget, timeline, vendors, and guests"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Reset Demo</span>
-            </button>
-          )}
 
           {/* Plan Event Primary Button */}
           <Link to="/events/new" className="hidden sm:inline-flex">

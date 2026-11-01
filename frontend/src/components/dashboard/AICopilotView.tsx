@@ -7,7 +7,6 @@ import type { SavedEvent, CopilotMessage, CopilotProposedAction } from '../../ty
 import { sendCopilotMessage, executeCopilotAction } from '../../services/api';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { useAuth } from '../../contexts/AuthContext';
 
 interface AICopilotViewProps {
   events: SavedEvent[];
@@ -33,7 +32,6 @@ export default function AICopilotView({
   onRefreshEvents,
   selectedEventId,
 }: AICopilotViewProps) {
-  const { isDemoMode } = useAuth();
   const [selectedId, setSelectedId] = useState<string>(selectedEventId || events[0]?.id || '');
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -199,15 +197,9 @@ export default function AICopilotView({
               <h2 className="font-display font-bold text-lg text-[var(--text-primary)]">
                 AI Event Copilot
               </h2>
-              {isDemoMode ? (
-                <span className="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
-                  Demo Studio
-                </span>
-              ) : (
-                <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3" /> Event Connected
-                </span>
-              )}
+              <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3" /> Event Connected
+              </span>
             </div>
             <p className="text-xs text-[var(--text-secondary)]">
               Event-aware conversational planner with safe, allowlisted blueprint actions

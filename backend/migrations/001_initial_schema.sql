@@ -324,6 +324,11 @@ CREATE POLICY "Users can view own profile"
     ON public.profiles FOR SELECT
     USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+CREATE POLICY "Users can insert own profile"
+    ON public.profiles FOR INSERT
+    WITH CHECK (auth.uid() = id);
+
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile"
     ON public.profiles FOR UPDATE
@@ -361,7 +366,16 @@ BEGIN
             CREATE POLICY "%s_owner_delete"
                 ON public.%I FOR DELETE
                 USING (auth.uid() = user_id);
-        ', tbl, tbl, tbl, tbl, tbl, tbl, tbl, tbl);
+        ',
+            -- SELECT: DROP policy name (%s), DROP table name (%I), CREATE policy name (%s), CREATE table name (%I)
+            tbl, tbl, tbl, tbl,
+            -- INSERT: DROP policy name (%s), DROP table name (%I), CREATE policy name (%s), CREATE table name (%I)
+            tbl, tbl, tbl, tbl,
+            -- UPDATE: DROP policy name (%s), DROP table name (%I), CREATE policy name (%s), CREATE table name (%I)
+            tbl, tbl, tbl, tbl,
+            -- DELETE: DROP policy name (%s), DROP table name (%I), CREATE policy name (%s), CREATE table name (%I)
+            tbl, tbl, tbl, tbl
+        );
     END LOOP;
 END;
 $$;

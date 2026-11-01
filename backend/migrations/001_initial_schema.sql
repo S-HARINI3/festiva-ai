@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW())
 );
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 -- ==============================================================================
 -- 3. TABLE: events
@@ -42,6 +43,7 @@ CREATE TABLE IF NOT EXISTS public.events (
     created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW())
 );
+ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 
 -- ==============================================================================
 -- 4. TABLE: event_plans
@@ -58,6 +60,7 @@ CREATE TABLE IF NOT EXISTS public.event_plans (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW()),
     CONSTRAINT uq_event_plans_event_version UNIQUE (event_id, version)
 );
+ALTER TABLE public.event_plans ENABLE ROW LEVEL SECURITY;
 
 -- ==============================================================================
 -- 5. TABLE: budget_categories
@@ -75,6 +78,7 @@ CREATE TABLE IF NOT EXISTS public.budget_categories (
     created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW())
 );
+ALTER TABLE public.budget_categories ENABLE ROW LEVEL SECURITY;
 
 -- ==============================================================================
 -- 6. TABLE: expenses
@@ -98,6 +102,7 @@ CREATE TABLE IF NOT EXISTS public.expenses (
     created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW())
 );
+ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 
 -- ==============================================================================
 -- 7. TABLE: tasks
@@ -124,6 +129,7 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW())
 );
+ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 
 -- ==============================================================================
 -- 8. TABLE: vendors
@@ -154,6 +160,7 @@ CREATE TABLE IF NOT EXISTS public.vendors (
     created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW())
 );
+ALTER TABLE public.vendors ENABLE ROW LEVEL SECURITY;
 
 -- ==============================================================================
 -- 9. TABLE: guests
@@ -180,6 +187,7 @@ CREATE TABLE IF NOT EXISTS public.guests (
     created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW())
 );
+ALTER TABLE public.guests ENABLE ROW LEVEL SECURITY;
 
 -- ==============================================================================
 -- 10. TABLE: moodboards
@@ -206,6 +214,7 @@ CREATE TABLE IF NOT EXISTS public.moodboards (
     created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW())
 );
+ALTER TABLE public.moodboards ENABLE ROW LEVEL SECURITY;
 
 -- ==============================================================================
 -- 11. TABLE: copilot_conversations
@@ -220,6 +229,7 @@ CREATE TABLE IF NOT EXISTS public.copilot_conversations (
     created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW()),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW())
 );
+ALTER TABLE public.copilot_conversations ENABLE ROW LEVEL SECURITY;
 
 -- ==============================================================================
 -- 12. PERFORMANCE INDEXES
